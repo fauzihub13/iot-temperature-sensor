@@ -212,9 +212,7 @@ void showBootScreen() {
 
   // === Gambar 2 ===
   wipeIn(epd_bitmap_deer);   
-  holdImage(epd_bitmap_deer, 1500);   
-  delay(800);
-  display.clearDisplay();
+  holdImage(epd_bitmap_deer, 1500);
 
   display.display();
 }
@@ -448,16 +446,18 @@ void setup() {
 }
 
 unsigned long lastRead = 0;
-const unsigned long READ_INTERVAL = 10000;  // 10 detik
+const unsigned long READ_INTERVAL = 1000;  // baca + update OLED tiap 1 detik
 
 void loop() {
   handleSerialCommand();
   checkResetButton();          // ← dicek terus, cepat
 
-  // Baca sensor tiap 10 detik, tapi tombol tetap dicek
+  // Baca sensor tiap detik (baca terus-menerus), kirim ke API tetap berkala (sendInterval)
   if (millis() - lastRead >= READ_INTERVAL) {
     lastRead = millis();
-    
+
+    // ponytail: requestTemperatures() blocking ~750ms. Kalau perlu baca lebih rapat,
+    // pakai sensors.setWaitForConversion(false) + baca hasil di iterasi berikutnya.
     sensors.requestTemperatures();
     float tempC = sensors.getTempCByIndex(0);
     unsigned long uptime = millis() / 1000;
@@ -469,7 +469,7 @@ void loop() {
       display.println("Sensor error");
       display.display();
     } else {
-      // Kirim ke API berkala
+      // Kirim ke API berkala, terpisah dari irama baca sensor
       if (millis() - lastSend >= sendInterval) {
         lastSend = millis();
         lastHttpCode = sendData(tempC, uptime);
