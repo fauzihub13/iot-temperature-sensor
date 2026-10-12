@@ -4,8 +4,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+#include <DHT.h>
 #include <Preferences.h>
 
 // ---------- OLED ----------
@@ -15,7 +14,8 @@
 #define OLED_ADDR     0x3C
 
 // ---------- Sensor ----------
-#define ONE_WIRE_BUS  4
+#define DHTPIN        4
+#define DHTTYPE       DHT22
 
 // ---------- Tombol reset WiFi ----------
 #define RESET_BUTTON_PIN 18
@@ -29,8 +29,7 @@ const unsigned long sendInterval = 300000; // 300 detik // 5 menit
 
 // ---------- Objek ----------
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
+DHT dht(DHTPIN, DHTTYPE);
 Preferences prefs;
 
 String device_id = "esp32-01";
@@ -233,7 +232,7 @@ void showWifiSetupScreen(WiFiManager *wm) {
   display.display();
 }
 
-void showMainScreen(float tempC, unsigned long uptime) {
+void showMainScreen(float tempC, float humidity, unsigned long uptime) {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
@@ -256,9 +255,16 @@ void showMainScreen(float tempC, unsigned long uptime) {
   display.print(" ");
   display.print(unit);
 
+  // Baris kelembapan
+  display.setTextSize(1);
+  display.setCursor(0, 32);
+  display.print("Hum: ");
+  display.print(humidity, 1);
+  display.print(" %");
+
   // Baris 4: uptime
   display.setTextSize(1);
-  display.setCursor(0, 40);
+  display.setCursor(0, 42);
   display.print("Uptime: ");
   display.print(uptime);
   display.println(" s");
@@ -341,7 +347,7 @@ void checkResetButton() {
 }
 
 // ================= Kirim ke API =================
-int sendData(float temperature, unsigned long uptime) {
+int sendData(float temperature, float humidity, unsigned long uptime) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi terputus, kirim dibatalkan");
     return -1;
@@ -354,6 +360,7 @@ int sendData(float temperature, unsigned long uptime) {
 
   String payload = "{";
   payload += "\"temperature\":" + String(temperature, 2) + ",";
+  payload += "\"humidity\":" + String(humidity, 2) + ",";
   payload += "\"device_id\":\"" + device_id + "\",";
   payload += "\"unit\":\"" + String(unit) + "\",";
   payload += "\"uptime\":" + String(uptime);
@@ -382,7 +389,7 @@ void setup() {
 
   pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
 
-  sensors.begin();
+  dht.begin();
   Wire.begin(21, 22);
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
@@ -446,24 +453,22 @@ void setup() {
 }
 
 unsigned long lastRead = 0;
-const unsigned long READ_INTERVAL = 1000;  // baca + update OLED tiap 1 detik
+const unsigned long READ_INTERVAL = 2000;  // DHT22 min 2 detik antar baca
 
 void loop() {
   handleSerialCommand();
   checkResetButton();          // ← dicek terus, cepat
 
-  // Baca sensor tiap detik (baca terus-menerus), kirim ke API tetap berkala (sendInterval)
+  // Baca sensor tiap 2 detik, kirim ke API tetap berkala (sendInterval)
   if (millis() - lastRead >= READ_INTERVAL) {
     lastRead = millis();
 
-    // ponytail: requestTemperatures() blocking ~750ms. Kalau perlu baca lebih rapat,
-    // pakai sensors.setWaitForConversion(false) + baca hasil di iterasi berikutnya.
-    sensors.requestTemperatures();
-    float tempC = sensors.getTempCByIndex(0);
+    float tempC = dht.readTemperature();
+    float humidity = dht.readHumidity();
     unsigned long uptime = millis() / 1000;
 
-    if (tempC == DEVICE_DISCONNECTED_C) {
-      Serial.println("Sensor DS18B20 tidak terbaca");
+    if (isnan(tempC) || isnan(humidity)) {
+      Serial.println("Sensor DHT22 tidak terbaca");
       display.clearDisplay();
       display.setCursor(0, 0);
       display.println("Sensor error");
@@ -472,14 +477,14 @@ void loop() {
       // Kirim ke API berkala, terpisah dari irama baca sensor
       if (millis() - lastSend >= sendInterval) {
         lastSend = millis();
-        lastHttpCode = sendData(tempC, uptime);
+        lastHttpCode = sendData(tempC, humidity, uptime);
         hasSentOnce = true;
       }
 
-      showMainScreen(tempC, uptime);
+      showMainScreen(tempC, humidity, uptime);
 
-      Serial.printf("Temp: %.2f %s | Uptime: %lu s | HTTP: %d\n",
-                    tempC, unit, uptime, lastHttpCode);
+      Serial.printf("Temp: %.2f %s | Hum: %.2f %% | Uptime: %lu s | HTTP: %d\n",
+                    tempC, unit, humidity, uptime, lastHttpCode);
     }
   }
 }
