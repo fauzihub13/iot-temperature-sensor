@@ -347,22 +347,23 @@ int sendData(float temperature, unsigned long uptime) {
     return -1;
   }
 
+  // Kirim sebagai query parameter (tetap method POST, body kosong)
+  String url = String(apiEndpoint)
+             + (String(apiEndpoint).indexOf('?') >= 0 ? "&" : "?")
+             + "temp=" + String(temperature, 2)
+             + "&id_devices=devices-001"
+             + "&unit=" + String(unit)
+             + "&uptime=" + String(uptime)
+             + "&status=Online";
+
   HTTPClient http;
-  http.begin(apiEndpoint);
-  http.addHeader("Content-Type", "application/json");
+  http.begin(url);
   http.setTimeout(5000);
 
-  String payload = "{";
-  payload += "\"temperature\":" + String(temperature, 2) + ",";
-  payload += "\"device_id\":\"" + device_id + "\",";
-  payload += "\"unit\":\"" + String(unit) + "\",";
-  payload += "\"uptime\":" + String(uptime);
-  payload += "}";
+  Serial.println("POST url:");
+  Serial.println(url);
 
-  Serial.println("POST payload:");
-  Serial.println(payload);
-
-  int code = http.POST(payload);
+  int code = http.POST("");
 
   // Hanya tampilkan kode status, bukan raw body
   if (code > 0) {
