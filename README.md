@@ -28,7 +28,7 @@ adalah ikhtisar proyek.
 - Kirim JSON ke REST API berkala (`sendInterval`, default 5 menit)
 - Tombol fisik reset WiFi (tahan 3 detik)
 - Perintah via Serial: ganti device ID, reset WiFi, reboot, status
-- `device_id` disimpan di NVS (Preferences)
+- `device_id` unik otomatis dari MAC ESP32; tersimpan di NVS & bisa di-override via Serial
 
 ## Hardware Minimal
 
