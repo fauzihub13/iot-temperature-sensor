@@ -11,11 +11,11 @@ atau hardware asli.
 ## Fitur
 
 - Baca suhu & kelembapan DHT22, interval 2 detik (batas minimum DHT22)
-- OLED SSD1306 128x64: SSID, suhu, kelembapan, uptime, status HTTP
+- OLED SSD1306 128x64: device ID, suhu, kelembapan, status HTTP
 - Boot animation (bitmap) di OLED
 - WiFiManager captive portal — ganti WiFi tanpa reflash
 - Deteksi otomatis Wokwi (`Wokwi-GUEST`) vs hardware asli
-- Kirim JSON ke REST API tiap 5 menit (`sendInterval`)
+- Kirim data REST API tiap 5 detik (`sendInterval`)
 - Tombol fisik reset WiFi (tahan 3 detik)
 - Perintah via Serial (ganti device ID, reset, reboot, status)
 - `device_id` unik otomatis dari MAC ESP32; tersimpan di NVS & bisa di-override via Serial
@@ -85,10 +85,10 @@ Cek port dengan `ls /dev/cu.*` (macOS/Linux) dan sesuaikan.
 Edit di `src/main.cpp`:
 
 ```cpp
-const char* apiEndpoint = "http://example.com/api/temperature"; // GANTI
+const char* apiEndpoint = "http://172.16.10.8:8003/api/monitoring"; // GANTI
 const char* AP_NAME     = "ESP32-IoT-Setup";
 const char* AP_PASSWORD = "12345678";        // minimal 8 karakter
-const unsigned long sendInterval = 300000;   // 5 menit
+const unsigned long sendInterval = 5000;     // 5 detik
 #define DHTPIN   4
 #define DHTTYPE  DHT22
 ```
@@ -99,7 +99,7 @@ const unsigned long sendInterval = 300000;   // 5 menit
 2. Saat boot, OLED menampilkan animasi lalu status WiFi.
 3. Jika belum pernah tersambung: perangkat membuat AP `ESP32-IoT-Setup`
    (password `12345678`). Sambungkan, buka captive portal, isi SSID + password WiFi.
-4. Setelah tersambung, OLED menampilkan suhu, kelembapan, uptime, dan status API.
+4. Setelah tersambung, OLED menampilkan device ID, suhu, kelembapan, dan status API.
 
 ### Wokwi (simulasi)
 
@@ -114,18 +114,21 @@ Buka proyek di Wokwi; firmware terdeteksi otomatis dan tersambung ke `Wokwi-GUES
 | `STATUS`          | Tampilkan device_id, WiFi, HTTP |
 | `DEVICE_ID=xxx`   | Simpan device ID baru ke NVS    |
 
-## Format Payload API
+## Format Data API
 
-HTTP `POST` ke `apiEndpoint`, header `Content-Type: application/json`:
+Dikirim sebagai **query parameter**, method tetap `POST` (body kosong):
 
-```json
-{
-  "temperature": 28.50,
-  "humidity": 65.30,
-  "device_id": "esp32-01",
-  "unit": "C",
-  "uptime": 1234
-}
 ```
+POST http://172.16.10.8:8003/api/monitoring?temp=28.50&humidity=65.30&id_devices=esp32-A1B2C3D4E5F6&unit=C&uptime=1234&status=Online
+```
+
+| Parameter    | Nilai                       |
+| ------------ | --------------------------- |
+| `temp`       | Suhu, 2 desimal             |
+| `humidity`   | Kelembapan, 2 desimal       |
+| `id_devices` | Device ID (dari MAC ESP32)  |
+| `unit`       | `C`                         |
+| `uptime`     | Detik sejak boot            |
+| `status`     | `Online`                    |
 
 Turunan `dht22` dari proyek `iot-temperature-sensor`.
