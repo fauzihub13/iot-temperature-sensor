@@ -249,7 +249,9 @@ void showMainScreen(float tempC, unsigned long uptime) {
   //   display.println("WiFi: Disconnected");
   // }
 
-  display.println("Device ID: " + device_id);
+  String idLine = "ID: " + device_id;
+  if (idLine.length() > 21) idLine = idLine.substring(0, 21);  // 21 char @ size1 = 126px, biar tak wrap
+  display.println(idLine);
 
   // Baris 2-3: temperatur besar
   display.setTextSize(2);
@@ -266,7 +268,8 @@ void showMainScreen(float tempC, unsigned long uptime) {
   // display.println(" s");
 
   // Baris 5: status API (hanya kode)
-  display.setCursor(0, 52);
+  display.setTextSize(1);
+  display.setCursor(0, 40);
   display.print("API : ");
   if (!hasSentOnce) {
     display.println("waiting...");
