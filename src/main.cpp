@@ -23,9 +23,9 @@
 // ---------- Konfigurasi ----------
 const char* AP_NAME     = "ESP32-IoT-Setup";
 const char* AP_PASSWORD = "12345678";  // minimal 8 karakter
-const char* apiEndpoint = "http://example.com/api/temperature"; // GANTI
+const char* apiEndpoint = "http://172.16.10.8:8003/api/monitoring"; // GANTI
 const char* unit        = "C";
-const unsigned long sendInterval = 300000; // 300 detik // 5 menit
+const unsigned long sendInterval = 5000; // 5000 ms = 5 detik
 
 // ---------- Objek ----------
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -240,28 +240,30 @@ void showMainScreen(float tempC, unsigned long uptime) {
 
   // Baris 1: status WiFi (SSID jika terhubung)
   display.setCursor(0, 0);
-  if (WiFi.status() == WL_CONNECTED) {
-    String ssid = WiFi.SSID();
-    if (ssid.length() > 14) ssid = ssid.substring(0, 14);
-    display.print("WiFi: ");
-    display.println(ssid);
-  } else {
-    display.println("WiFi: Disconnected");
-  }
+  // if (WiFi.status() == WL_CONNECTED) {
+  //   String ssid = WiFi.SSID();
+  //   if (ssid.length() > 14) ssid = ssid.substring(0, 14);
+  //   display.print("WiFi: ");
+  //   display.println(ssid);
+  // } else {
+  //   display.println("WiFi: Disconnected");
+  // }
+
+  display.println("Device ID: " + device_id);
 
   // Baris 2-3: temperatur besar
   display.setTextSize(2);
   display.setCursor(0, 16);
-  display.print(tempC, 1);
+  display.print(tempC, 2);
   display.print(" ");
   display.print(unit);
 
-  // Baris 4: uptime
-  display.setTextSize(1);
-  display.setCursor(0, 40);
-  display.print("Uptime: ");
-  display.print(uptime);
-  display.println(" s");
+  // Baris 4: uptime (tidak ditampilkan)
+  // display.setTextSize(1);
+  // display.setCursor(0, 40);
+  // display.print("Uptime: ");
+  // display.print(uptime);
+  // display.println(" s");
 
   // Baris 5: status API (hanya kode)
   display.setCursor(0, 52);
@@ -351,7 +353,7 @@ int sendData(float temperature, unsigned long uptime) {
   String url = String(apiEndpoint)
              + (String(apiEndpoint).indexOf('?') >= 0 ? "&" : "?")
              + "temp=" + String(temperature, 2)
-             + "&id_devices=devices-001"
+             + "&id_devices=" + String(device_id)
              + "&unit=" + String(unit)
              + "&uptime=" + String(uptime)
              + "&status=Online";
