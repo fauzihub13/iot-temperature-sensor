@@ -391,9 +391,12 @@ void setup() {
   }
   showBootScreen();
 
-  // Load device_id dari NVS
+  // Load device_id dari NVS; kalau belum di-set, turunkan dari MAC unik ESP32
   prefs.begin("iot", false);
-  device_id = prefs.getString("device_id", "esp32-01");
+  char macBuf[20];
+  snprintf(macBuf, sizeof(macBuf), "esp32-%04X%08X",
+           (uint16_t)(ESP.getEfuseMac() >> 32), (uint32_t)ESP.getEfuseMac());
+  device_id = prefs.getString("device_id", macBuf);
   Serial.print("Device ID: ");
   Serial.println(device_id);
 
